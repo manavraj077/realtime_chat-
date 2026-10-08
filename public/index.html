@@ -1,0 +1,4498 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Private Real-Time Chat</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        /* HEADER */
+
+        .header {
+            background: #075e54;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h2 {
+            margin: 0;
+        }
+
+        .current {
+            font-size: 13px;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        #logoutButton {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 0 0 8px 8px;
+            background: #f8f8f8;
+            color: #dc3545;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #logoutButton:hover {
+            background: skyblue;
+        }
+
+        /* MAIN CHAT */
+        .chat-layout {
+            display: flex;
+            height: 550px;
+            min-height: 550px;
+            overflow: hidden;
+        }
+        /* USERS */
+
+        .users-panel {
+            width: 250px;
+            border-right: 1px solid #ddd;
+        }
+
+        .users-title {
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #userList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 490px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            width: 100%;
+            border: none;
+            background: white;
+            padding: 12px 15px;
+            text-align: left;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-item:hover,
+        .user-item.active {
+            background: #e8f5e9;
+        }
+
+        .user-name {
+            font-weight: bold;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .online {
+            background: #22c55e;
+        }
+
+        .offline {
+            background: #aaa;
+        }
+
+        /* ===============================
+        CHAT LIST
+        =============================== */
+
+        .chat-item {
+            width: 100%;
+            border: none;
+            background: white;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            gap: 10px;
+        }
+
+        .chat-item:hover,
+        .chat-item.active {
+            background: #e8f5e9;
+        }
+
+        .chat-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .chat-name {
+            font-weight: bold;
+            font-size: 15px;
+
+            display: flex;
+            align-items: center;
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-preview {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #777;
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-right {
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .chat-time {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .unread-count {
+            display: inline-flex;
+
+            min-width: 20px;
+            height: 20px;
+
+            padding: 0 6px;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 50%;
+
+            background: #25d366;
+            color: white;
+
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* CHAT PANEL */
+
+        .chat-panel {
+            flex: 1;
+            min-width: 0;
+
+            display: flex;
+            flex-direction: column;
+
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 13px 15px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            min-height: 48px;
+        }
+
+        #messages {
+            flex: 1;
+            min-height: 0;
+
+            overflow-y: auto;
+            overflow-x: hidden;
+
+            list-style: none;
+            padding: 15px;
+            margin: 0;
+
+            background: #efeae2;
+        }
+
+        /* MESSAGE */
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 70%;
+            clear: both;
+        }
+
+        .my-message {
+            background: #d9fdd3;
+            float: right;
+        }
+
+        .other-message {
+            background: #d9fdd3;
+            float: left;
+        }
+
+        .username {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: #555;
+        }
+
+        .text {
+            font-size: 15px;
+            word-wrap: break-word;
+        }
+
+        .time {
+            font-size: 10px;
+            color: #777;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .status {
+            font-size: 14px;
+            margin-left: 5px;
+            color: #777;
+        }
+
+        .status.read {
+            color: #2196f3;
+            font-weight: bold;
+        }
+
+        /* TYPING */
+
+        #typingIndicator {
+            height: 25px;
+            padding-left: 15px;
+            font-size: 13px;
+            color: #777;
+            background: #efeae2;
+        }
+
+        /* FORM */
+
+        #form {
+            display: flex;
+            padding: 10px;
+            background: #f0f2f5;
+        }
+
+        #input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        #form button {
+            margin-left: 5px;
+            padding: 10px 18px;
+            background: #075e54;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #form button:disabled,
+        #input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* EMPTY */
+
+        .empty {
+            text-align: center;
+            color: #777;
+            padding: 30px 15px;
+            font-size: 14px;
+        }
+
+
+        /* ==========================================
+        MOBILE CHAT UI
+        ========================================== */
+
+        @media (max-width: 700px) {
+
+            body {
+                background: #f0f2f5;
+                overflow: hidden;
+            }
+
+            .container {
+                width: 100%;
+                max-width: none;
+                height: 100vh;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            /* HEADER */
+
+            .header {
+                height: 65px;
+                padding: 10px 12px;
+            }
+
+            .header h2 {
+                font-size: 18px;
+            }
+
+            .current {
+                font-size: 11px;
+            }
+
+            #currentUserAvatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            #profileButton {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+
+            /* CHAT LAYOUT */
+
+            .chat-layout {
+                display: block;
+                height: calc(100vh - 65px);
+                min-height: 0;
+                position: relative;
+            }
+
+            /* CHAT LIST */
+
+            .users-panel {
+                width: 100%;
+                height: 100%;
+                border: none;
+                background: white;
+            }
+
+            .users-title {
+                padding: 15px;
+                font-size: 16px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            #userList {
+                display: block;
+                max-height: none;
+                height: calc(100% - 50px);
+                overflow-y: auto;
+            }
+
+            .user-item,
+            .chat-item {
+                width: 100%;
+                min-height: 65px;
+                padding: 10px 14px;
+                border-bottom: 1px solid #eee;
+            }
+
+            .user-item:hover,
+            .chat-item:hover {
+                background: white;
+            }
+
+            .user-item.active,
+            .chat-item.active {
+                background: #e8f5e9;
+            }
+
+            .user-avatar,
+            .chat-avatar {
+                width: 45px;
+                height: 45px;
+                min-width: 45px;
+            }
+
+            .user-name,
+            .chat-name {
+                font-size: 15px;
+            }
+
+            .user-status,
+            .chat-preview {
+                font-size: 12px;
+            }
+
+            /* CHAT PANEL */
+
+            .chat-panel {
+                display: none;
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                background: #efeae2;
+            }
+
+            .chat-panel.mobile-open {
+                display: flex;
+            }
+
+            /* CHAT HEADER */
+
+            .chat-header {
+                height: 55px;
+                min-height: 55px;
+                padding: 0 12px;
+                display: flex;
+                align-items: center;
+                background: #075e54;
+                color: white;
+                border: none;
+            }
+
+            .mobile-back-button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 38px;
+                height: 38px;
+                margin-right: 8px;
+                border: none;
+                border-radius: 50%;
+                background: transparent;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+            }
+
+            /* MESSAGES */
+
+            #messages {
+                padding: 12px 10px;
+            }
+
+            .message {
+                max-width: 85%;
+                padding: 8px 10px;
+                margin-bottom: 8px;
+                border-radius: 10px;
+            }
+
+            .username {
+                font-size: 12px;
+            }
+
+            .text {
+                font-size: 14px;
+            }
+
+            .time {
+                font-size: 9px;
+            }
+
+            .chat-image {
+                max-width: 220px;
+                max-height: 260px;
+            }
+
+            /* TYPING */
+
+            #typingIndicator {
+                height: 22px;
+                padding-left: 10px;
+                font-size: 12px;
+            }
+
+            /* MESSAGE FORM */
+
+            #form {
+                width: 100%;
+                padding: 8px;
+                gap: 4px;
+                background: #f0f2f5;
+                align-items: center;
+            }
+
+            #input {
+                min-width: 0;
+                height: 42px;
+                padding: 10px 12px;
+                border-radius: 20px;
+                font-size: 16px;
+            }
+
+            #cameraButton {
+                width: 42px;
+                height: 42px;
+                min-width: 42px;
+                padding: 0;
+                margin: 0;
+                border-radius: 50%;
+                font-size: 18px;
+            }
+
+            #form button[type="submit"] {
+                height: 42px;
+                padding: 0 15px;
+                margin: 0;
+                border-radius: 20px;
+            }
+
+            /* IMAGE PREVIEW */
+
+            #imagePreviewBox {
+                padding: 8px;
+            }
+
+            #imagePreview {
+                max-width: 200px;
+                max-height: 200px;
+            }
+
+            /* PROFILE MENU */
+
+            .profile-menu {
+                width: 200px;
+                right: 0;
+                top: 43px;
+            }
+
+            .profile-menu button {
+                min-height: 48px;
+                padding: 12px 14px;
+            }
+
+            /* MODALS */
+
+            .edit-profile-box,
+            .crop-modal-box,
+            .username-modal-box {
+                width: calc(100% - 30px);
+                max-width: 420px;
+                padding: 20px;
+            }
+
+            .crop-stage {
+                width: min(320px, 80vw);
+                height: min(320px, 80vw);
+            }
+
+        }
+
+        /* DESKTOP */
+
+            .mobile-back-button {
+                display: none;
+            }
+
+        /* MOBILE */
+
+            @media (max-width: 700px) {
+                .mobile-back-button {
+                    display: inline-flex;
+                }
+            }
+
+        /* CAMERA BUTTON */
+
+            #cameraButton {
+                margin-left: 5px;
+                padding: 10px 14px;
+                background: #075e54;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 18px;
+            }
+
+
+            /* IMAGE PREVIEW */
+
+            #imagePreviewBox {
+                display: none;
+                padding: 10px;
+                background: #f0f2f5;
+                border-top: 1px solid #ddd;
+                text-align: center;
+            }
+
+            #imagePreview {
+                display: block;
+                max-width: 280px;
+                max-height: 280px;
+                margin: 0 auto 10px;
+                border-radius: 10px;
+                object-fit: contain;
+            }
+
+            .image-preview-buttons {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .image-preview-buttons button {
+                padding: 9px 18px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+
+            #cancelImageButton {
+                background: #777;
+                color: white;
+            }
+
+            #sendImageButton {
+                background: #075e54;
+                color: white;
+            }
+
+
+            /* IMAGE INSIDE CHAT */
+
+            .chat-image {
+                display: block;
+                max-width: 260px;
+                max-height: 300px;
+                border-radius: 8px;
+                margin-top: 4px;
+            }
+
+        /* ==========================================
+        PROFILE PICTURE
+        ========================================== */
+
+        .profile-picture-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #profilePicture {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            background: #ddd;
+            cursor: pointer;
+        }
+
+        .profile-picture-upload {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: white;
+            color: #075e54;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .profile-picture-upload:hover {
+            background: #eeeeee;
+        }
+
+        #profilePictureInput {
+            display: none;
+        }
+
+        .profile-picture-message {
+            padding: 10px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid #ddd;
+            display: none;
+        }
+
+        .profile-picture-message.success {
+            color: #16803c;
+        }
+
+        .profile-picture-message.error {
+            color: #c62828;
+        }
+
+
+        /* ==========================================
+        PROFILE AVATARS
+        ========================================== */
+
+        .profile-avatar {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e0e0e0;
+            border: 2px solid #075e54;
+        }
+
+        .user-avatar,
+        .chat-avatar {
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e0e0e0;
+        }
+
+        .user-item,
+        .chat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        /* ==========================================
+        EDIT PROFILE / IMAGE CUSTOMIZATION
+        ========================================== */
+
+        .edit-profile-button {
+            background: #8bbfd3 !important;
+            color: white !important;
+            text-align: left !important;
+            font-weight: bold;
+        }
+
+        #editProfileButton:hover {
+            background-color: #007bff;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .edit-profile-modal,
+        .crop-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .edit-profile-modal.show,
+        .crop-modal.show {
+            display: flex;
+        }
+
+        .edit-profile-box,
+        .crop-modal-box {
+            width: min(420px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            background: white;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        }
+
+        .edit-profile-box h3,
+        .crop-modal-box h3 {
+            margin: 0 0 8px;
+            color: #075e54;
+        }
+
+        .edit-profile-box p,
+        .crop-modal-box p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .edit-profile-preview {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            margin: 15px auto;
+            border: 3px solid #075e54;
+            background: #eee;
+        }
+
+        .edit-profile-row {
+            margin-top: 15px;
+        }
+
+        .edit-profile-row label {
+            display: block;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .edit-profile-row input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        .edit-profile-actions,
+        .crop-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .edit-profile-actions button,
+        .crop-actions button {
+            flex: 1;
+            padding: 11px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #cancelEditProfileButton,
+        #cancelCropButton {
+            background: #777;
+            color: white;
+        }
+
+        #saveEditProfileButton,
+        #applyCropButton {
+            background: #075e54;
+            color: white;
+        }
+
+        .crop-stage {
+            width: 320px;
+            height: 320px;
+            max-width: 100%;
+            margin: 15px auto;
+            overflow: hidden;
+            border-radius: 50%;
+            background: #111;
+            position: relative;
+            touch-action: none;
+            border: 3px solid #075e54;
+        }
+
+        #cropCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        #cropCanvas.dragging {
+            cursor: grabbing;
+        }
+
+        #cropZoom {
+            width: 100%;
+        }
+
+        .crop-help {
+            text-align: center;
+            margin: 8px 0;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .edit-profile-message {
+            min-height: 20px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        /* ==========================================
+        PROFILE MENU
+        ========================================== */
+
+        .profile-area {
+            position: relative;
+        }
+
+        #profileButton {
+            background: white;
+            color: #075e54;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #profileButton:hover {
+            background: #eeeeee;
+        }
+
+        .profile-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 45px;
+            width: 210px;
+            background: white;
+            border-radius: 8px;
+            box-shadow:
+                0 5px 20px rgba(0,0,0,0.25);
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .profile-menu.show {
+            display: block;
+        }
+
+        .profile-title {
+            padding: 14px;
+            font-weight: bold;
+            color: #075e54;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .profile-menu button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: white;
+            color: #333;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .profile-menu button:hover {
+            background: skyblue;
+        }
+
+        #logoutButton{
+            background: #8bbfd3 !important;
+            color: white !important;
+            text-align: left !important;
+            font-weight: bold;
+        }
+
+        #logoutButton {
+            border-top: 1px solid #ddd;
+            margin-top: 3px;
+            padding-top: 12px;
+        }
+        
+        #logoutButton:hover {
+            background-color: #007bff;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        /* ==========================================
+        USERNAME MODAL
+        ========================================== */
+
+        .username-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .username-modal.show {
+            display: flex;
+        }
+
+        .username-modal-box {
+            width: 360px;
+            max-width: 90%;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow:
+                0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .username-modal-box h3 {
+            margin-top: 0;
+            color: #075e54;
+        }
+
+        .username-modal-box p {
+            color: #777;
+            font-size: 14px;
+        }
+
+        #newUsername {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        #newUsername:focus {
+            border-color: #075e54;
+        }
+
+        .username-message {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .username-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .username-actions button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #cancelUsernameButton {
+            background: #777;
+            color: white;
+        }
+
+        #saveUsernameButton {
+            background: #075e54;
+            color: white;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+        <div>
+
+            <h2>
+                Private Chat
+            </h2>
+
+            <div style="display:flex;align-items:center;gap:10px;">
+                <img
+                    id="currentUserAvatar"
+                    class="profile-avatar"
+                    src=""
+                    alt="Your profile picture"
+                >
+                <div
+                    id="currentUser"
+                    class="current"
+                >
+                    Logged in as:
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="profile-area">
+
+            <button
+                id="profileButton"
+                type="button"
+            >
+                👤 Profile
+            </button>
+
+            <div
+                id="profileMenu"
+                class="profile-menu"
+            >
+
+                <div class="profile-title">
+                    Profile Settings
+                </div>
+
+                <input
+                        type="file"
+                        id="profilePictureInput"
+                        accept="image/jpeg,image/png,image/webp"
+                    >
+
+                <button
+                    id="editProfileButton"
+                    class="edit-profile-button"
+                    type="button"
+                >
+                    ✏️ Edit Profile
+                </button>
+
+                <button
+                    id="logoutButton"
+                    type="button"
+                >
+                    🚪 Logout
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- CHAT LAYOUT -->
+
+    <div class="chat-layout">
+
+
+        <!-- USERS -->
+
+        <aside class="users-panel">
+
+            <div class="users-title">
+                chats
+            </div>
+
+            <ul id="userList"></ul>
+
+        </aside>
+
+
+
+        <!-- CHAT -->
+
+        <section class="chat-panel">
+
+
+        <div
+            class="chat-header"
+            id="chatHeader"
+        >
+            <button
+                id="mobileBackButton"
+                class="mobile-back-button"
+                type="button"
+            >
+                ←
+            </button>
+
+            <div class="chat-header" id="chatHeader">
+                <button id="mobileBackButton" class="mobile-back-button" type="button">
+                    ←
+                </button>
+
+                <span id="chatHeaderText">
+                    Select a user to start chatting
+                </span>
+            </div>
+        </div>
+
+
+            <ul id="messages"></ul>
+
+
+            <!-- TYPING -->
+
+            <div id="typingIndicator">
+
+                <span id="typingText"></span>
+
+            </div>
+
+            <!-- IMAGE PREVIEW -->
+
+            <div id="imagePreviewBox">
+
+                <img
+                    id="imagePreview"
+                    alt="Selected image preview"
+                >
+
+                <div class="image-preview-buttons">
+
+                    <button
+                        id="cancelImageButton"
+                        type="button"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        id="sendImageButton"
+                        type="button"
+                    >
+                        Send ➤
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- MESSAGE FORM -->
+
+            <form id="form">
+
+                <input
+                    type="file"
+                    id="cameraInput"
+                    accept="image/*"
+                    capture="environment"
+                    hidden
+                >
+
+                <button
+                    id="cameraButton"
+                    type="button"
+                    disabled
+                    title="Take a picture"
+                >
+                    📷
+                </button>
+
+                <input
+                    id="input"
+                    placeholder="Select a user first..."
+                    autocomplete="off"
+                    disabled
+                >
+
+                <button
+                    id="sendButton"
+                    type="submit"
+                    disabled
+                >
+                    Send
+                </button>
+
+            </form>
+
+
+        </section>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+
+// =====================================
+// LOGIN INFORMATION
+// =====================================
+
+const token =
+    localStorage.getItem("chatToken");
+
+const username =
+    localStorage.getItem("chatUsername");
+
+
+if (!token || !username) {
+
+    location.href = "/login.html";
+
+}
+
+
+// =====================================
+// ELEMENTS
+// =====================================
+
+const currentUser =
+    document.getElementById("currentUser");
+
+const userList =
+    document.getElementById("userList");
+
+const chatHeader =
+    document.getElementById("chatHeader");
+
+const messages =
+    document.getElementById("messages");
+
+const typingText =
+    document.getElementById("typingText");
+
+const input =
+    document.getElementById("input");
+
+const form =
+    document.getElementById("form");
+
+const sendButton =
+    document.getElementById("sendButton");
+
+const cameraButton =
+    document.getElementById("cameraButton");
+
+const cameraInput =
+    document.getElementById("cameraInput");
+
+const imagePreviewBox =
+    document.getElementById("imagePreviewBox");
+
+const imagePreview =
+    document.getElementById("imagePreview");
+
+const cancelImageButton =
+    document.getElementById("cancelImageButton");
+
+const sendImageButton =
+    document.getElementById("sendImageButton");
+
+let selectedImageData = null;
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+// =====================================
+// PROFILE PICTURE + EDIT PROFILE
+// =====================================
+
+const profilePicture =
+    document.getElementById("profilePicture");
+
+const currentUserAvatar =
+    document.getElementById("currentUserAvatar");
+
+const profilePictureButton =
+    document.getElementById("profilePictureButton");
+
+const profilePictureInput =
+    document.getElementById("profilePictureInput");
+
+const editProfileButton =
+    document.getElementById("editProfileButton");
+
+const editChangeUsernameButton =
+    document.getElementById("editChangeUsernameButton");
+
+const editProfileModal =
+    document.getElementById("editProfileModal");
+
+const editProfilePreview =
+    document.getElementById("editProfilePreview");
+
+const editUsername =
+    document.getElementById("editUsername");
+
+const changePhotoFromEditButton =
+    document.getElementById("changePhotoFromEditButton");
+
+const cancelEditProfileButton =
+    document.getElementById("cancelEditProfileButton");
+
+const saveEditProfileButton =
+    document.getElementById("saveEditProfileButton");
+
+const editProfileMessage =
+    document.getElementById("editProfileMessage");
+
+const cropModal =
+    document.getElementById("cropModal");
+
+const cropCanvas =
+    document.getElementById("cropCanvas");
+
+const cropZoom =
+    document.getElementById("cropZoom");
+
+const cancelCropButton =
+    document.getElementById("cancelCropButton");
+
+const applyCropButton =
+    document.getElementById("applyCropButton");
+
+let currentProfilePicture = null;
+let cropImage = null;
+let cropScale = 1;
+let cropX = 0;
+let cropY = 0;
+let cropStartX = 0;
+let cropStartY = 0;
+let cropDragging = false;
+
+function defaultAvatar() {
+
+    return "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
+            '<rect width="160" height="160" fill="#dddddd"/>' +
+            '<circle cx="80" cy="60" r="28" fill="#888888"/>' +
+            '<path d="M30 140c5-35 25-52 50-52s45 17 50 52" fill="#888888"/>' +
+            '</svg>'
+        );
+
+}
+
+function setAvatar(element, src) {
+
+    if (!element) {
+        return;
+    }
+
+    element.onerror = function () {
+        this.onerror = null;
+        this.src = defaultAvatar();
+    };
+
+    element.src = src || defaultAvatar();
+
+}
+
+function setAllMyAvatars(src) {
+
+    setAvatar(profilePicture, src);
+    setAvatar(currentUserAvatar, src);
+    setAvatar(editProfilePreview, src);
+
+}
+
+function showEditMessage(message, type) {
+
+    if (!editProfileMessage) {
+        return;
+    }
+
+    editProfileMessage.textContent = message;
+    editProfileMessage.style.color =
+        type === "error" ? "#c62828" : "#075e54";
+
+}
+
+function loadProfilePicture() {
+
+    fetch("/profile-picture", {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (data.success && data.profilePicture) {
+
+            currentProfilePicture =
+                data.profilePicture;
+
+        } else {
+
+            currentProfilePicture = null;
+
+        }
+
+        setAllMyAvatars(currentProfilePicture);
+
+    })
+    .catch(error => {
+
+        console.error(
+            "Could not load profile picture:",
+            error
+        );
+
+        setAllMyAvatars(null);
+
+    });
+
+}
+
+function openEditProfile() {
+
+    if (editProfileModal) {
+        editProfileModal.classList.add("show");
+    }
+
+    if (editUsername) {
+        editUsername.value =
+            localStorage.getItem("chatUsername") || "";
+    }
+
+    showEditMessage("", "success");
+
+    setAvatar(
+        editProfilePreview,
+        currentProfilePicture
+    );
+
+}
+
+function closeEditProfile() {
+
+    if (editProfileModal) {
+        editProfileModal.classList.remove("show");
+    }
+
+}
+
+function validateUsername(value) {
+
+    if (value.length < 3 || value.length > 20) {
+        return "Username must be 3 to 20 characters.";
+    }
+
+    if (!/^[a-zA-Z0-9_.]+$/.test(value)) {
+        return "Only letters, numbers, underscore and dot are allowed.";
+    }
+
+    return "";
+
+}
+
+
+// =====================================
+// OPEN EDIT PROFILE
+// =====================================
+
+if (editProfileButton) {
+
+    editProfileButton.addEventListener(
+        "click",
+        function () {
+
+            const profileMenu =
+                document.getElementById("profileMenu");
+
+            if (profileMenu) {
+                profileMenu.classList.remove("show");
+            }
+
+            openEditProfile();
+
+        }
+    );
+
+}
+
+
+// =====================================
+// PROFILE PICTURE BUTTON
+// =====================================
+
+if (profilePictureButton) {
+
+    profilePictureButton.addEventListener(
+        "click",
+        function () {
+
+            if (profilePictureInput) {
+                profilePictureInput.click();
+            }
+
+        }
+    );
+
+}
+
+if (changePhotoFromEditButton) {
+
+    changePhotoFromEditButton.addEventListener(
+        "click",
+        function () {
+
+            if (profilePictureInput) {
+                profilePictureInput.click();
+            }
+
+        }
+    );
+
+}
+
+
+// =====================================
+// SELECT PHOTO
+// =====================================
+
+if (profilePictureInput) {
+
+    profilePictureInput.addEventListener(
+        "change",
+        function () {
+
+            const file =
+                profilePictureInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+
+                showEditMessage(
+                    "Please select a JPG, PNG, or WEBP image.",
+                    "error"
+                );
+
+                profilePictureInput.value = "";
+                return;
+
+            }
+
+            if (file.size > 2 * 1024 * 1024) {
+
+                showEditMessage(
+                    "Profile picture must be smaller than 2 MB.",
+                    "error"
+                );
+
+                profilePictureInput.value = "";
+                return;
+
+            }
+
+            const reader =
+                new FileReader();
+
+            reader.onload = function () {
+
+                cropImage =
+                    new Image();
+
+                cropImage.onload = function () {
+
+                    cropScale = 1;
+
+                    const canvasSize = 320;
+
+                    const scale =
+                        Math.max(
+                            canvasSize / cropImage.width,
+                            canvasSize / cropImage.height
+                        );
+
+                    cropScale = scale;
+
+                    cropX =
+                        (canvasSize -
+                            cropImage.width * cropScale) / 2;
+
+                    cropY =
+                        (canvasSize -
+                            cropImage.height * cropScale) / 2;
+
+                    if (cropZoom) {
+                        cropZoom.value = "1";
+                    }
+
+                    drawCrop();
+
+                    if (cropModal) {
+                        cropModal.classList.add("show");
+                    }
+
+                };
+
+                cropImage.src =
+                    reader.result;
+
+            };
+
+            reader.readAsDataURL(file);
+
+        }
+    );
+
+}
+
+
+// =====================================
+// DRAW CROP
+// =====================================
+
+function drawCrop() {
+
+    if (!cropCanvas || !cropImage) {
+        return;
+    }
+
+    const ctx =
+        cropCanvas.getContext("2d");
+
+    ctx.clearRect(
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+    );
+
+    ctx.fillStyle = "#111";
+    ctx.fillRect(
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+    );
+
+    ctx.drawImage(
+        cropImage,
+        cropX,
+        cropY,
+        cropImage.width * cropScale,
+        cropImage.height * cropScale
+    );
+
+}
+
+
+// =====================================
+// ZOOM
+// =====================================
+
+if (cropZoom) {
+
+    cropZoom.addEventListener(
+        "input",
+        function () {
+
+            if (!cropImage) {
+                return;
+            }
+
+            const oldScale =
+                cropScale;
+
+            const zoom =
+                Number(cropZoom.value);
+
+            const baseScale =
+                Math.max(
+                    320 / cropImage.width,
+                    320 / cropImage.height
+                );
+
+            const newScale =
+                baseScale * zoom;
+
+            const centerX = 160;
+            const centerY = 160;
+
+            cropX =
+                centerX -
+                (
+                    centerX - cropX
+                ) *
+                (
+                    newScale / oldScale
+                );
+
+            cropY =
+                centerY -
+                (
+                    centerY - cropY
+                ) *
+                (
+                    newScale / oldScale
+                );
+
+            cropScale =
+                newScale;
+
+            drawCrop();
+
+        }
+    );
+
+}
+
+
+// =====================================
+// DRAG IMAGE
+// =====================================
+
+if (cropCanvas) {
+
+    cropCanvas.addEventListener(
+        "pointerdown",
+        function (event) {
+
+            if (!cropImage) {
+                return;
+            }
+
+            cropDragging = true;
+
+            cropStartX =
+                event.clientX - cropX;
+
+            cropStartY =
+                event.clientY - cropY;
+
+            cropCanvas.classList.add("dragging");
+
+            cropCanvas.setPointerCapture(
+                event.pointerId
+            );
+
+        }
+    );
+
+    cropCanvas.addEventListener(
+        "pointermove",
+        function (event) {
+
+            if (!cropDragging) {
+                return;
+            }
+
+            cropX =
+                event.clientX - cropStartX;
+
+            cropY =
+                event.clientY - cropStartY;
+
+            drawCrop();
+
+        }
+    );
+
+    cropCanvas.addEventListener(
+        "pointerup",
+        function () {
+
+            cropDragging = false;
+            cropCanvas.classList.remove("dragging");
+
+        }
+    );
+
+    cropCanvas.addEventListener(
+        "pointercancel",
+        function () {
+
+            cropDragging = false;
+            cropCanvas.classList.remove("dragging");
+
+        }
+    );
+
+}
+
+
+// =====================================
+// CANCEL CROP
+// =====================================
+
+if (cancelCropButton) {
+
+    cancelCropButton.addEventListener(
+        "click",
+        function () {
+
+            if (cropModal) {
+                cropModal.classList.remove("show");
+            }
+
+            cropImage = null;
+
+            if (profilePictureInput) {
+                profilePictureInput.value = "";
+            }
+
+        }
+    );
+
+}
+
+
+// =====================================
+// APPLY CROP AND UPLOAD
+// =====================================
+
+if (applyCropButton) {
+
+    applyCropButton.addEventListener(
+        "click",
+        async function () {
+
+            if (!cropImage) {
+                return;
+            }
+
+            const output =
+                document.createElement("canvas");
+
+            output.width = 500;
+            output.height = 500;
+
+            const ctx =
+                output.getContext("2d");
+
+            const scale =
+                500 / 320;
+
+            ctx.drawImage(
+                cropCanvas,
+                0,
+                0,
+                320,
+                320,
+                0,
+                0,
+                500,
+                500
+            );
+
+            const croppedData =
+                output.toDataURL(
+                    "image/jpeg",
+                    0.88
+                );
+
+            if (cropModal) {
+                cropModal.classList.remove("show");
+            }
+
+            showEditMessage(
+                "Uploading profile picture...",
+                "success"
+            );
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/profile-picture",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    "Bearer " + token
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    profilePicture:
+                                        croppedData
+                                })
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok || !data.success) {
+
+                    throw new Error(
+                        data.message ||
+                        "Profile picture upload failed."
+                    );
+
+                }
+
+                currentProfilePicture =
+                    data.profilePicture;
+
+                setAllMyAvatars(
+                    currentProfilePicture
+                );
+
+                showEditMessage(
+                    "Profile picture updated successfully.",
+                    "success"
+                );
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Profile picture upload error:",
+                    error
+                );
+
+                showEditMessage(
+                    error.message ||
+                    "Profile picture upload failed.",
+                    "error"
+                );
+
+            }
+
+            cropImage = null;
+
+            if (profilePictureInput) {
+                profilePictureInput.value = "";
+            }
+
+        }
+    );
+
+}
+
+
+// =====================================
+// CHANGE USERNAME FROM EDIT PROFILE
+// =====================================
+
+if (editChangeUsernameButton) {
+
+    editChangeUsernameButton.addEventListener(
+        "click",
+        function () {
+
+            closeEditProfile();
+
+            const usernameModal =
+                document.getElementById("usernameModal");
+
+            const newUsernameInput =
+                document.getElementById("newUsername");
+
+            const usernameMessage =
+                document.getElementById("usernameMessage");
+
+            if (usernameModal) {
+                usernameModal.classList.add("show");
+            }
+
+            if (newUsernameInput) {
+                newUsernameInput.value =
+                    localStorage.getItem("chatUsername") || "";
+                newUsernameInput.focus();
+            }
+
+            if (usernameMessage) {
+                usernameMessage.textContent = "";
+            }
+        }
+    );
+
+}
+
+
+// =====================================
+// CLOSE EDIT PROFILE
+// =====================================
+
+if (cancelEditProfileButton) {
+
+    cancelEditProfileButton.addEventListener(
+        "click",
+        closeEditProfile
+    );
+
+}
+
+if (editProfileModal) {
+
+    editProfileModal.addEventListener(
+        "click",
+        function (event) {
+
+            if (event.target === editProfileModal) {
+                closeEditProfile();
+            }
+
+        }
+    );
+
+}
+
+
+// =====================================
+// PROFILE PICTURE LOADING
+// =====================================
+
+loadProfilePicture();
+
+
+// ==========================================
+// PROFILE SETTINGS
+// ==========================================
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const profileButton =
+        document.getElementById("profileButton");
+
+    const profileMenu =
+        document.getElementById("profileMenu");
+
+    const changeUsernameButton =
+        document.getElementById(
+            "changeUsernameButton"
+        );
+
+    const usernameModal =
+        document.getElementById(
+            "usernameModal"
+        );
+
+    const newUsernameInput =
+        document.getElementById(
+            "newUsername"
+        );
+
+    const saveUsernameButton =
+        document.getElementById(
+            "saveUsernameButton"
+        );
+
+    const cancelUsernameButton =
+        document.getElementById(
+            "cancelUsernameButton"
+        );
+
+    const usernameMessage =
+        document.getElementById(
+            "usernameMessage"
+        );
+
+
+    // ==========================================
+    // CHECK PROFILE ELEMENTS
+    // ==========================================
+
+    if (!profileButton) {
+        console.error(
+            "Profile button not found."
+        );
+        return;
+    }
+
+    if (!profileMenu) {
+        console.error(
+            "Profile menu not found."
+        );
+        return;
+    }
+
+
+    // ==========================================
+    // OPEN / CLOSE PROFILE MENU
+    // ==========================================
+
+    profileButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.stopPropagation();
+
+            profileMenu.classList.toggle(
+                "show"
+            );
+
+        }
+    );
+
+
+    // ==========================================
+    // CLOSE MENU WHEN CLICKING OUTSIDE
+    // ==========================================
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                !profileMenu.contains(event.target) &&
+                !profileButton.contains(event.target)
+            ) {
+
+                profileMenu.classList.remove(
+                    "show"
+                );
+
+            }
+
+        }
+    );
+
+
+    // ==========================================
+    // CHANGE USERNAME BUTTON
+    // ==========================================
+
+    if (changeUsernameButton) {
+
+        changeUsernameButton.addEventListener(
+            "click",
+            function () {
+
+                profileMenu.classList.remove(
+                    "show"
+                );
+
+
+                if (!usernameModal) {
+                    console.error(
+                        "Username modal not found."
+                    );
+                    return;
+                }
+
+
+                usernameModal.classList.add(
+                    "show"
+                );
+
+
+                // Get current username
+                const currentUsername =
+                    localStorage.getItem(
+                        "chatUsername"
+                    ) || "";
+
+
+                if (newUsernameInput) {
+
+                    newUsernameInput.value =
+                        currentUsername;
+
+                    newUsernameInput.focus();
+
+                }
+
+
+                if (usernameMessage) {
+
+                    usernameMessage.textContent =
+                        "";
+
+                }
+
+            }
+        );
+
+    }
+    else {
+
+        console.warn(
+            "Change Username button not found."
+        );
+
+    }
+
+
+    // ==========================================
+    // CANCEL CHANGE USERNAME
+    // ==========================================
+
+    if (cancelUsernameButton) {
+
+        cancelUsernameButton.addEventListener(
+            "click",
+            function () {
+
+                if (usernameModal) {
+
+                    usernameModal.classList.remove(
+                        "show"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
+    // CLOSE MODAL WHEN CLICKING OUTSIDE
+    // ==========================================
+
+    if (usernameModal) {
+
+        usernameModal.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target === usernameModal
+                ) {
+
+                    usernameModal.classList.remove(
+                        "show"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
+    // SAVE USERNAME
+    // ==========================================
+
+    if (saveUsernameButton) {
+
+        saveUsernameButton.addEventListener(
+            "click",
+            async function () {
+
+                if (!newUsernameInput) {
+                    return;
+                }
+
+
+                const newUsername =
+                    newUsernameInput.value.trim();
+
+
+                // ==================================
+                // VALIDATE LENGTH
+                // ==================================
+
+                if (
+                    newUsername.length < 3 ||
+                    newUsername.length > 20
+                ) {
+
+                    if (usernameMessage) {
+
+                        usernameMessage.style.color =
+                            "red";
+
+                        usernameMessage.textContent =
+                            "Username must be 3 to 20 characters.";
+
+                    }
+
+                    return;
+                }
+
+
+                // ==================================
+                // VALIDATE CHARACTERS
+                // ==================================
+
+                if (
+                    !/^[a-zA-Z0-9_.]+$/.test(
+                        newUsername
+                    )
+                ) {
+
+                    if (usernameMessage) {
+
+                        usernameMessage.style.color =
+                            "red";
+
+                        usernameMessage.textContent =
+                            "Only letters, numbers, underscore and dot are allowed.";
+
+                    }
+
+                    return;
+                }
+
+
+                // ==================================
+                // GET LOGIN TOKEN
+                // ==================================
+
+                const currentToken =
+                    localStorage.getItem(
+                        "chatToken"
+                    );
+
+
+                if (!currentToken) {
+
+                    if (usernameMessage) {
+
+                        usernameMessage.style.color =
+                            "red";
+
+                        usernameMessage.textContent =
+                            "You are not logged in.";
+
+                    }
+
+                    return;
+                }
+
+
+                // ==================================
+                // DISABLE BUTTON
+                // ==================================
+
+                saveUsernameButton.disabled =
+                    true;
+
+
+                if (usernameMessage) {
+
+                    usernameMessage.style.color =
+                        "#075e54";
+
+                    usernameMessage.textContent =
+                        "Updating username...";
+
+                }
+
+
+                // ==================================
+                // SEND REQUEST TO SERVER
+                // ==================================
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/change-username",
+                            {
+
+                                method: "POST",
+
+                                headers: {
+
+                                    "Content-Type":
+                                        "application/json",
+
+                                    "Authorization":
+                                        "Bearer " +
+                                        currentToken
+
+                                },
+
+                                body:
+                                    JSON.stringify({
+                                        username:
+                                            newUsername
+                                    })
+
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    // ==================================
+                    // SUCCESS
+                    // ==================================
+
+                    if (data.success) {
+
+                        // Save new JWT
+                        localStorage.setItem(
+                            "chatToken",
+                            data.token
+                        );
+
+
+                        // Save new username
+                        localStorage.setItem(
+                            "chatUsername",
+                            data.username
+                        );
+
+
+                        if (usernameMessage) {
+
+                            usernameMessage.style.color =
+                                "green";
+
+                            usernameMessage.textContent =
+                                "Username changed successfully!";
+
+                        }
+
+
+                        // Reload page after short delay
+                        setTimeout(
+                            function () {
+
+                                location.reload();
+
+                            },
+                            700
+                        );
+
+                    }
+
+
+                    // ==================================
+                    // SERVER ERROR
+                    // ==================================
+
+                    else {
+
+                        if (usernameMessage) {
+
+                            usernameMessage.style.color =
+                                "red";
+
+                            usernameMessage.textContent =
+                                data.message ||
+                                "Could not change username.";
+
+                        }
+
+
+                        saveUsernameButton.disabled =
+                            false;
+
+                    }
+
+                }
+
+
+                // ==================================
+                // CONNECTION ERROR
+                // ==================================
+
+                catch (error) {
+
+                    console.error(
+                        "Username change error:",
+                        error
+                    );
+
+
+                    if (usernameMessage) {
+
+                        usernameMessage.style.color =
+                            "red";
+
+                        usernameMessage.textContent =
+                            "Server connection failed.";
+
+                    }
+
+
+                    saveUsernameButton.disabled =
+                        false;
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
+    // ESC KEY CLOSES PROFILE / MODAL
+    // ==========================================
+
+    document.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (event.key === "Escape") {
+
+                if (profileMenu) {
+
+                    profileMenu.classList.remove(
+                        "show"
+                    );
+
+                }
+
+                if (usernameModal) {
+
+                    usernameModal.classList.remove(
+                        "show"
+                    );
+
+                }
+
+            }
+
+        }
+    );
+
+});
+
+
+// =====================================
+// VARIABLES
+// =====================================
+
+let currentUserId = null;
+
+let selectedUserId = null;
+
+let selectedUsername = null;
+
+let typingTimer;
+
+
+// =====================================
+// SHOW CURRENT USER
+// =====================================
+
+currentUser.textContent =
+    "Logged in as: " + username;
+
+
+// =====================================
+// SOCKET CONNECTION
+// =====================================
+
+const socket = io({
+    auth: {
+        token: token
+    }
+});
+
+
+// =====================================
+// VERIFY USER
+// =====================================
+
+fetch("/verify", {
+
+    headers: {
+        Authorization:
+            "Bearer " + token
+    }
+
+})
+.then(response => response.json())
+
+.then(data => {
+
+    if (!data.success) {
+
+        logout();
+
+        return;
+    }
+
+    currentUserId =
+        Number(data.userId);
+
+    currentUser.textContent =
+        "Logged in as: " +
+        data.username;
+
+})
+
+.catch(() => {
+
+    logout();
+
+});
+
+
+// =====================================
+// LOGOUT
+// =====================================
+
+function logout() {
+
+    socket.disconnect();
+
+    localStorage.removeItem(
+        "chatToken"
+    );
+
+    localStorage.removeItem(
+        "chatUsername"
+    );
+
+    location.href =
+        "/login.html";
+}
+
+
+logoutButton.addEventListener(
+    "click",
+    logout
+);
+
+
+// =====================================
+// SOCKET ERROR
+// =====================================
+
+socket.on(
+    "connect_error",
+    () => {
+
+        logout();
+
+    }
+);
+
+
+// =====================================
+// USER LIST
+// =====================================
+
+socket.on(
+    "user list",
+    users => {
+
+        userList.innerHTML = "";
+
+
+        // Don't show current user
+        const others =
+            users.filter(
+                user =>
+                    Number(user.id) !==
+                    Number(currentUserId)
+            );
+
+
+        if (others.length === 0) {
+
+            userList.innerHTML =
+                '<li class="empty">No other users yet.</li>';
+
+            return;
+        }
+
+
+        others.forEach(user => {
+
+            const li =
+                document.createElement("li");
+
+
+            const button =
+                document.createElement("button");
+
+
+            button.type = "button";
+
+            button.className =
+                "user-item";
+
+
+            if (
+                Number(user.id) ===
+                Number(selectedUserId)
+            ) {
+
+                button.classList.add(
+                    "active"
+                );
+
+            }
+
+
+            // PROFILE AVATAR
+
+            const avatar =
+                document.createElement("img");
+
+            avatar.className = "user-avatar";
+            avatar.dataset.userId = user.id;
+            avatar.alt = user.username + " profile picture";
+            setAvatar(
+                avatar,
+                user.profile_picture
+            );
+
+
+            // USER NAME
+
+            const name =
+                document.createElement("div");
+
+            name.className =
+                "user-name";
+
+            name.textContent =
+                user.username;
+
+
+            // STATUS
+
+            const status =
+                document.createElement("div");
+
+            status.className =
+                "user-status";
+
+
+            const dot =
+                document.createElement("span");
+
+            dot.className =
+                "dot " +
+                (
+                    user.online
+                        ? "online"
+                        : "offline"
+                );
+
+
+            status.append(
+                dot,
+                document.createTextNode(
+                    user.online
+                        ? "Online"
+                        : "Offline"
+                )
+            );
+
+
+            button.append(
+                avatar,
+                name,
+                status
+            );
+
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    selectUser(user);
+
+                }
+            );
+
+
+            li.appendChild(button);
+
+            userList.appendChild(li);
+
+        });
+
+    }
+);
+
+// Request the user list again after
+// all Socket.IO listeners are ready.
+
+socket.emit("request user list");
+
+// =====================================
+// CHAT LIST
+// =====================================
+
+socket.on("chat list", (chats) => {
+
+    console.log("CHAT LIST RECEIVED:", chats);
+
+    userList.innerHTML = "";
+
+    if (!chats || chats.length === 0) {
+
+        userList.innerHTML = `
+            <li class="empty">
+                No chats yet.
+            </li>
+        `;
+
+        return;
+    }
+
+
+    chats.forEach(chat => {
+
+        const li =
+            document.createElement("li");
+
+
+        const button =
+            document.createElement("button");
+
+        button.type = "button";
+
+        button.className = "chat-item";
+
+
+        // Highlight selected chat
+
+        if (
+            Number(chat.id) ===
+            Number(selectedUserId)
+        ) {
+
+            button.classList.add("active");
+
+        }
+
+
+        // ===============================
+        // MAIN CHAT AREA
+        // ===============================
+
+        const main =
+            document.createElement("div");
+
+        main.className =
+            "chat-main";
+
+
+        // PROFILE AVATAR
+
+        const avatar =
+            document.createElement("img");
+
+        avatar.className = "chat-avatar";
+        avatar.dataset.userId = chat.id;
+        avatar.alt = chat.username + " profile picture";
+        setAvatar(
+            avatar,
+            chat.profile_picture
+        );
+
+
+        // USER NAME
+
+        const name =
+            document.createElement("div");
+
+        name.className =
+            "chat-name";
+
+
+        const dot =
+            document.createElement("span");
+
+        dot.className =
+            "dot " +
+            (
+                chat.online
+                    ? "online"
+                    : "offline"
+            );
+
+
+        name.append(
+            dot,
+            document.createTextNode(
+                chat.username
+            )
+
+        );
+
+
+        // LAST MESSAGE
+
+        const preview =
+            document.createElement("div");
+
+        preview.className =
+            "chat-preview";
+
+        preview.textContent =
+            chat.lastMessage ||
+            "No messages yet";
+
+
+        main.append(
+            name,
+            preview
+        );
+
+        button.prepend(avatar);
+
+
+        // ===============================
+        // RIGHT SIDE
+        // ===============================
+
+        const right =
+            document.createElement("div");
+
+        right.className =
+            "chat-right";
+
+
+        // TIME
+
+        if (chat.lastMessageTime) {
+
+            const time =
+                document.createElement("div");
+
+            time.className =
+                "chat-time";
+
+
+            const date =
+                new Date(
+                    chat.lastMessageTime
+                );
+
+
+            time.textContent =
+                date.toLocaleTimeString(
+                    [],
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+
+            right.appendChild(time);
+
+        }
+
+
+        // UNREAD COUNT
+
+        if (
+            Number(chat.unreadCount) > 0
+        ) {
+
+            const unread =
+                document.createElement("span");
+
+            unread.className =
+                "unread-count";
+
+            unread.textContent =
+                chat.unreadCount;
+
+            right.appendChild(unread);
+
+        }
+
+
+        // ===============================
+        // BUILD CHAT ITEM
+        // ===============================
+
+        button.append(
+            main,
+            right
+        );
+
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                selectUser({
+                    id: chat.id,
+                    username: chat.username,
+                    online: chat.online
+                });
+
+            }
+        );
+
+
+        li.appendChild(button);
+
+        userList.appendChild(li);
+
+    });
+
+});
+
+
+// =====================================
+// SELECT USER
+// =====================================
+
+function selectUser(user) {
+
+    console.log("SELECTED USER:", user);
+
+    const id = Number(user.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+
+        console.error(
+            "Invalid user ID:",
+            user.id
+        );
+
+        return;
+    }
+
+    if (
+        currentUserId !== null &&
+        id === Number(currentUserId)
+    ) {
+
+        console.error(
+            "Cannot chat with yourself."
+        );
+
+        return;
+    }
+
+
+    selectedUserId = id;
+
+    selectedUsername = user.username;
+
+    if (window.innerWidth <= 700) {
+        const chatPanel =
+            document.querySelector(".chat-panel");
+
+        if (chatPanel) {
+            chatPanel.classList.add("mobile-open");
+        }
+    }
+
+
+    chatHeader.textContent =
+        "Chat with " + selectedUsername;
+
+
+    messages.innerHTML = "";
+
+    input.disabled = false;
+    sendButton.disabled = false;
+    cameraButton.disabled = false;
+
+
+    input.placeholder =
+        "Type a message...";
+
+
+    console.log(
+        "Loading conversation with user ID:",
+        selectedUserId
+    );
+
+
+    socket.emit(
+        "load conversation",
+        selectedUserId
+    );
+
+
+    input.focus();
+}
+
+
+// =====================================
+// LOAD CONVERSATION
+// =====================================
+
+socket.on(
+    "conversation messages",
+    list => {
+
+        messages.innerHTML = "";
+
+
+        list.forEach(data => {
+
+            createMessage(data);
+
+
+            // Mark received messages as read
+
+            if (
+                currentUserId !== null &&
+                Number(data.receiver_id) ===
+                    currentUserId &&
+                data.status !== "read"
+            ) {
+
+                socket.emit(
+                    "message read",
+                    data.id
+                );
+
+            }
+
+        });
+
+
+        messages.scrollTop =
+            messages.scrollHeight;
+
+    }
+);
+
+
+// =====================================
+// CREATE MESSAGE
+// =====================================
+
+function createMessage(data) {
+
+    const li =
+        document.createElement("li");
+
+
+    li.dataset.messageId =
+        data.id;
+
+
+    const isMine =
+        Number(data.sender_id) ===
+        Number(currentUserId);
+
+
+    li.className =
+        "message " +
+        (
+            isMine
+                ? "my-message"
+                : "other-message"
+        );
+
+
+    // USERNAME
+
+    const name =
+        document.createElement("div");
+
+    name.className =
+        "username";
+
+    name.textContent =
+        data.username;
+
+
+        // MESSAGE
+
+        const text =
+            document.createElement("div");
+
+        text.className =
+            "text";
+
+        if (
+        data.message_type === "image" &&
+        data.image_data
+    ) {
+
+        const image =
+            document.createElement("img");
+
+        image.src =
+            data.image_data;
+
+        image.alt =
+            "Sent image";
+
+        image.className =
+            "chat-image";
+
+        text.appendChild(
+            image
+        );
+
+    }
+    else {
+
+        text.textContent =
+            data.message;
+
+    }
+
+
+    // TIME
+
+    const time =
+        document.createElement("div");
+
+    time.className =
+        "time";
+
+
+    const messageTime =
+        new Date(
+            data.created_at
+        );
+
+
+    time.textContent =
+        messageTime.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+
+
+    // STATUS
+
+    if (isMine) {
+
+        const status =
+            document.createElement("span");
+
+        status.className =
+            "status";
+
+
+        if (
+            data.status ===
+            "read"
+        ) {
+
+            status.textContent =
+                "✓✓";
+
+            status.classList.add(
+                "read"
+            );
+
+        }
+
+        else if (
+            data.status ===
+            "delivered"
+        ) {
+
+            status.textContent =
+                "✓✓";
+
+        }
+
+        else {
+
+            status.textContent =
+                "✓";
+
+        }
+
+
+        time.appendChild(
+            status
+        );
+
+    }
+
+
+    li.append(
+        name,
+        text,
+        time
+    );
+
+
+    messages.appendChild(
+        li
+    );
+
+
+    return li;
+}
+
+// =====================================
+// CAMERA / IMAGE
+// =====================================
+
+cameraButton.addEventListener(
+    "click",
+    function () {
+
+        console.log(
+            "Camera button clicked"
+        );
+
+        if (
+            !selectedUserId ||
+            Number(selectedUserId) <= 0
+        ) {
+
+            console.log(
+                "Please select a user first."
+            );
+
+            return;
+        }
+
+        cameraInput.click();
+
+    }
+);
+
+
+// =====================================
+// IMAGE SELECTED
+// =====================================
+
+cameraInput.addEventListener(
+    "change",
+    function (event) {
+
+        const file =
+            event.target.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        console.log(
+            "Image selected:",
+            file.name
+        );
+
+        const reader =
+            new FileReader();
+
+        reader.onload = function () {
+
+            selectedImageData =
+                reader.result;
+
+            imagePreview.src =
+                selectedImageData;
+
+            imagePreviewBox.style.display =
+                "block";
+
+        };
+
+        reader.readAsDataURL(file);
+
+    }
+);
+
+
+// =====================================
+// CANCEL IMAGE
+// =====================================
+
+cancelImageButton.addEventListener(
+    "click",
+    () => {
+
+        selectedImageData = null;
+
+        imagePreview.src = "";
+
+        imagePreviewBox.style.display =
+            "none";
+
+        cameraInput.value = "";
+
+    }
+);
+
+
+// =====================================
+// SEND IMAGE
+// =====================================
+
+sendImageButton.addEventListener(
+    "click",
+    () => {
+
+        if (
+            !selectedUserId ||
+            !selectedImageData
+        ) {
+            return;
+        }
+
+        socket.emit(
+            "chat message",
+            {
+                receiverId: selectedUserId,
+
+                messageType: "image",
+
+                imageData: selectedImageData
+            }
+        );
+
+        selectedImageData = null;
+
+        imagePreview.src = "";
+
+        imagePreviewBox.style.display =
+            "none";
+
+        cameraInput.value = "";
+
+    }
+);
+
+
+// =====================================
+// SEND MESSAGE
+// =====================================
+
+form.addEventListener(
+    "submit",
+    event => {
+
+        event.preventDefault();
+
+
+        if (!selectedUserId) {
+            return;
+        }
+
+
+        const message =
+            input.value.trim();
+
+
+        if (!message) {
+            return;
+        }
+
+
+        socket.emit(
+            "chat message",
+            {
+                receiverId:
+                    selectedUserId,
+
+                message:
+                    message
+            }
+        );
+
+
+        socket.emit(
+            "stop typing",
+            selectedUserId
+        );
+
+
+        input.value = "";
+
+        clearTimeout(
+            typingTimer
+        );
+
+    }
+);
+
+
+
+// =====================================
+// RECEIVE MESSAGE
+// =====================================
+
+socket.on(
+    "chat message",
+    data => {
+
+        const belongsToCurrentChat =
+
+            (
+                Number(data.sender_id) ===
+                    Number(currentUserId) &&
+
+                Number(data.receiver_id) ===
+                    Number(selectedUserId)
+            )
+
+            ||
+
+            (
+                Number(data.sender_id) ===
+                    Number(selectedUserId) &&
+
+                Number(data.receiver_id) ===
+                    Number(currentUserId)
+            );
+
+
+        // Ignore messages from other conversations
+
+        if (!belongsToCurrentChat) {
+            return;
+        }
+
+
+        createMessage(data);
+
+
+        // If message was received by us,
+        // mark it as read
+
+        if (
+            Number(data.receiver_id) ===
+            Number(currentUserId)
+        ) {
+
+            socket.emit(
+                "message read",
+                data.id
+            );
+
+        }
+
+
+        messages.scrollTop =
+            messages.scrollHeight;
+
+    }
+);
+
+
+// =====================================
+// DELIVERED
+// =====================================
+
+socket.on(
+    "message delivered",
+    id => {
+
+        const status =
+            document.querySelector(
+                `[data-message-id="${id}"] .status`
+            );
+
+
+        if (status) {
+
+            status.textContent =
+                "✓✓";
+
+            status.classList.remove(
+                "read"
+            );
+
+        }
+
+    }
+);
+
+
+// =====================================
+// READ
+// =====================================
+
+socket.on(
+    "message read",
+    id => {
+
+        const status =
+            document.querySelector(
+                `[data-message-id="${id}"] .status`
+            );
+
+
+        if (status) {
+
+            status.textContent =
+                "✓✓";
+
+            status.classList.add(
+                "read"
+            );
+
+        }
+
+    }
+);
+
+
+// =====================================
+// PROFILE PICTURE UPDATES
+// =====================================
+
+socket.on(
+    "profile picture updated",
+    data => {
+
+        if (!data) {
+            return;
+        }
+
+        const userId =
+            Number(data.userId);
+
+        // Update currently visible avatars
+        document
+            .querySelectorAll(
+                ".user-avatar, .chat-avatar"
+            )
+            .forEach(img => {
+
+                if (
+                    Number(
+                        img.dataset.userId
+                    ) === userId
+                ) {
+
+                    setAvatar(
+                        img,
+                        data.profilePicture
+                    );
+
+                }
+
+            });
+
+        // The lists are rebuilt from server data.
+        socket.emit("request user list");
+
+    }
+);
+
+
+// =====================================
+// TYPING
+// =====================================
+
+input.addEventListener(
+    "input",
+    () => {
+
+        if (!selectedUserId) {
+            return;
+        }
+
+
+        socket.emit(
+            "typing",
+            selectedUserId
+        );
+
+
+        clearTimeout(
+            typingTimer
+        );
+
+
+        typingTimer =
+            setTimeout(
+                () => {
+
+                    socket.emit(
+                        "stop typing",
+                        selectedUserId
+                    );
+
+                },
+                800
+            );
+
+    }
+);
+
+
+// =====================================
+// OTHER USER TYPING
+// =====================================
+
+socket.on(
+    "user typing",
+    name => {
+
+        if (
+            name ===
+            selectedUsername
+        ) {
+
+            typingText.textContent =
+                name +
+                " is typing...";
+
+        }
+
+    }
+);
+
+
+// =====================================
+// OTHER USER STOPPED TYPING
+// =====================================
+
+socket.on(
+    "user stopped typing",
+    () => {
+
+        typingText.textContent =
+            "";
+
+    }
+);
+
+
+// =====================================
+// INITIAL MESSAGE
+// =====================================
+
+messages.innerHTML =
+    '<li class="empty">Select a user from the left to start a private chat.</li>';
+
+// =====================================
+// MOBILE CHAT NAVIGATION
+// =====================================
+
+const mobileBackButton =
+    document.getElementById("mobileBackButton");
+
+if (mobileBackButton) {
+
+    mobileBackButton.addEventListener("click", function (event) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Close the chat screen
+        const chatPanel =
+            document.querySelector(".chat-panel");
+
+        if (chatPanel) {
+            chatPanel.classList.remove("mobile-open");
+        }
+
+        // Clear selected user
+        selectedUserId = null;
+        selectedUsername = null;
+
+        // Reset chat header
+        const chatHeaderText =
+            document.getElementById("chatHeaderText");
+
+        if (chatHeaderText) {
+            chatHeaderText.textContent =
+                "Select a user to start chatting";
+        }
+
+        // Disable message controls
+        input.disabled = true;
+        cameraButton.disabled = true;
+        sendButton.disabled = true;
+
+        // Clear input
+        input.value = "";
+
+        // Clear messages
+        messages.innerHTML = "";
+    });
+}
+
+
+
+</script>
+
+<button
+    id="mobileBackButton"
+    class="mobile-back-button"
+    type="button"
+    onclick="event.stopPropagation();"
+>
+    ←
+</button>
+
+
+<!-- ==========================================
+     EDIT PROFILE POPUP
+========================================== -->
+
+<div id="editProfileModal" class="edit-profile-modal">
+
+    <div class="edit-profile-box">
+
+        <h3>Edit Profile</h3>
+        <p>Select what you want to change.</p>
+
+        <img
+            id="editProfilePreview"
+            class="edit-profile-preview"
+            src=""
+            alt="Profile picture preview"
+        >
+
+        <div class="edit-profile-options">
+            <button
+                id="editChangeUsernameButton"
+                type="button"
+                class="edit-option-button"
+            >
+                ✏️ Change Username
+            </button>
+
+            <button
+                id="changePhotoFromEditButton"
+                type="button"
+                class="edit-option-button"
+            >
+                📷 Profile Picture
+            </button>
+        </div>
+
+        <button
+            id="cancelEditProfileButton"
+            type="button"
+            class="edit-cancel-button"
+        >
+            Cancel
+        </button>
+
+        <div
+            id="editProfileMessage"
+            class="edit-profile-message"
+            aria-live="polite"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- ==========================================
+     PROFILE PHOTO CUSTOMIZATION
+========================================== -->
+
+<div id="cropModal" class="crop-modal">
+
+    <div class="crop-modal-box">
+
+        <h3>Customize Profile Picture</h3>
+
+        <p class="crop-help">
+            Drag the picture and use the slider to zoom.
+        </p>
+
+        <div class="crop-stage">
+            <canvas
+                id="cropCanvas"
+                width="320"
+                height="320"
+            ></canvas>
+        </div>
+
+        <label for="cropZoom">
+            Zoom
+        </label>
+
+        <input
+            id="cropZoom"
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value="1"
+        >
+
+        <div class="crop-actions">
+
+            <button
+                id="cancelCropButton"
+                type="button"
+            >
+                Cancel
+            </button>
+
+            <button
+                id="applyCropButton"
+                type="button"
+            >
+                Use This Picture
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ==========================================
+     CHANGE USERNAME POPUP
+========================================== -->
+
+<div
+    id="usernameModal"
+    class="username-modal"
+>
+
+    <div class="username-modal-box">
+
+        <h3>
+            Change Username
+        </h3>
+
+        <p>
+            Choose a new username for your account.
+        </p>
+
+        <input
+            type="text"
+            id="newUsername"
+            placeholder="Enter new username"
+            maxlength="20"
+        >
+
+        <div
+            id="usernameMessage"
+            class="username-message"
+        ></div>
+
+        <div class="username-actions">
+
+            <button
+                type="button"
+                id="cancelUsernameButton"
+            >
+                Cancel
+            </button>
+
+            <button
+                type="button"
+                id="saveUsernameButton"
+            >
+                Save
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+<script>
+// =====================================================
+// FIXED PROFILE / EDIT PROFILE SYSTEM
+// This runs after all profile modals exist in the HTML.
+// =====================================================
+(function () {
+    const profileButton = document.getElementById('profileButton');
+    const profileMenu = document.getElementById('profileMenu');
+    const editProfileButton = document.getElementById('editProfileButton');
+    const logoutButton = document.getElementById('logoutButton');
+
+    const editProfileModal = document.getElementById('editProfileModal');
+    const editChangeUsernameButton = document.getElementById('editChangeUsernameButton');
+    const changePhotoFromEditButton = document.getElementById('changePhotoFromEditButton');
+    const cancelEditProfileButton = document.getElementById('cancelEditProfileButton');
+    const editProfilePreview = document.getElementById('editProfilePreview');
+    const editProfileMessage = document.getElementById('editProfileMessage');
+
+    const profilePictureInput = document.getElementById('profilePictureInput');
+    const currentUserAvatar = document.getElementById('currentUserAvatar');
+
+    const cropModal = document.getElementById('cropModal');
+    const cropCanvas = document.getElementById('cropCanvas');
+    const cropZoom = document.getElementById('cropZoom');
+    const cancelCropButton = document.getElementById('cancelCropButton');
+    const applyCropButton = document.getElementById('applyCropButton');
+
+    const usernameModal = document.getElementById('usernameModal');
+    const newUsernameInput = document.getElementById('newUsername');
+    const usernameMessage = document.getElementById('usernameMessage');
+    const saveUsernameButton = document.getElementById('saveUsernameButton');
+    const cancelUsernameButton = document.getElementById('cancelUsernameButton');
+
+    const authToken = localStorage.getItem('chatToken');
+
+    let cropImage = null;
+    let cropScale = 1;
+    let cropX = 0;
+    let cropY = 0;
+    let dragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let currentProfilePicture = null;
+
+    function defaultAvatar() {
+        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
+            '<rect width="160" height="160" fill="#dddddd"/>' +
+            '<circle cx="80" cy="60" r="28" fill="#888888"/>' +
+            '<path d="M30 140c5-35 25-52 50-52s45 17 50 52" fill="#888888"/>' +
+            '</svg>'
+        );
+    }
+
+    function setAvatar(img, src) {
+        if (!img) return;
+        img.onerror = function () {
+            this.onerror = null;
+            this.src = defaultAvatar();
+        };
+        img.src = src || defaultAvatar();
+    }
+
+    function setMyAvatars(src) {
+        setAvatar(currentUserAvatar, src);
+        setAvatar(editProfilePreview, src);
+    }
+
+    function message(text, error) {
+        if (!editProfileMessage) return;
+        editProfileMessage.textContent = text || '';
+        editProfileMessage.style.color = error ? '#c62828' : '#075e54';
+    }
+
+    function closeProfileMenu() {
+        if (profileMenu) profileMenu.classList.remove('show');
+    }
+
+    function openEditProfile() {
+        closeProfileMenu();
+        if (!editProfileModal) return;
+        editProfileModal.classList.add('show');
+        message('');
+        setAvatar(editProfilePreview, currentProfilePicture);
+    }
+
+    function closeEditProfile() {
+        if (editProfileModal) editProfileModal.classList.remove('show');
+    }
+
+    function openUsername() {
+        closeEditProfile();
+        if (!usernameModal) return;
+        usernameModal.classList.add('show');
+        if (newUsernameInput) {
+            newUsernameInput.value = localStorage.getItem('chatUsername') || '';
+            newUsernameInput.focus();
+        }
+        if (usernameMessage) usernameMessage.textContent = '';
+    }
+
+    function openPhotoPicker() {
+        if (profilePictureInput) profilePictureInput.click();
+    }
+
+    // Profile button -> menu
+    if (profileButton) {
+        profileButton.addEventListener('click', function (event) {
+            event.stopPropagation();
+            if (profileMenu) profileMenu.classList.toggle('show');
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (profileMenu && profileButton &&
+            !profileMenu.contains(event.target) &&
+            !profileButton.contains(event.target)) {
+            closeProfileMenu();
+        }
+    });
+
+    // Profile -> Edit Profile
+    if (editProfileButton) {
+        editProfileButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openEditProfile();
+        });
+    }
+
+    // Edit Profile -> Change Username
+    if (editChangeUsernameButton) {
+        editChangeUsernameButton.addEventListener('click', openUsername);
+    }
+
+    // Edit Profile -> Profile Picture
+    if (changePhotoFromEditButton) {
+        changePhotoFromEditButton.addEventListener('click', openPhotoPicker);
+    }
+
+    if (cancelEditProfileButton) {
+        cancelEditProfileButton.addEventListener('click', closeEditProfile);
+    }
+
+    if (editProfileModal) {
+        editProfileModal.addEventListener('click', function (event) {
+            if (event.target === editProfileModal) closeEditProfile();
+        });
+    }
+
+    // Username save
+    if (saveUsernameButton) {
+        saveUsernameButton.addEventListener('click', async function () {
+            const value = (newUsernameInput ? newUsernameInput.value : '').trim();
+            if (value.length < 3 || value.length > 20) {
+                if (usernameMessage) usernameMessage.textContent = 'Username must be 3 to 20 characters.';
+                return;
+            }
+            if (!/^[a-zA-Z0-9_.]+$/.test(value)) {
+                if (usernameMessage) usernameMessage.textContent = 'Only letters, numbers, underscore and dot are allowed.';
+                return;
+            }
+            if (!authToken) return;
+
+            saveUsernameButton.disabled = true;
+            if (usernameMessage) usernameMessage.textContent = 'Updating username...';
+
+            try {
+                const response = await fetch('/change-username', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ username: value })
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Could not change username.');
+                }
+
+                localStorage.setItem('chatToken', data.token);
+                localStorage.setItem('chatUsername', data.username);
+                if (usernameMessage) usernameMessage.textContent = 'Username changed successfully!';
+                setTimeout(function () { location.reload(); }, 600);
+            } catch (error) {
+                if (usernameMessage) usernameMessage.textContent = error.message;
+                saveUsernameButton.disabled = false;
+            }
+        });
+    }
+
+    if (cancelUsernameButton) {
+        cancelUsernameButton.addEventListener('click', function () {
+            if (usernameModal) usernameModal.classList.remove('show');
+        });
+    }
+
+    // Select image
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function () {
+            const file = profilePictureInput.files && profilePictureInput.files[0];
+            if (!file) return;
+
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                message('Please select a JPG, PNG, or WEBP image.', true);
+                profilePictureInput.value = '';
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                message('Profile picture must be smaller than 2 MB.', true);
+                profilePictureInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function () {
+                cropImage = new Image();
+                cropImage.onload = function () {
+                    const size = 320;
+                    const baseScale = Math.max(size / cropImage.width, size / cropImage.height);
+                    cropScale = baseScale;
+                    cropX = (size - cropImage.width * cropScale) / 2;
+                    cropY = (size - cropImage.height * cropScale) / 2;
+                    if (cropZoom) cropZoom.value = '1';
+                    drawCrop();
+                    if (cropModal) cropModal.classList.add('show');
+                };
+                cropImage.onerror = function () {
+                    message('Could not read this image.', true);
+                };
+                cropImage.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function drawCrop() {
+        if (!cropCanvas || !cropImage) return;
+        const ctx = cropCanvas.getContext('2d');
+        ctx.clearRect(0, 0, 320, 320);
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, 320, 320);
+        ctx.drawImage(cropImage, cropX, cropY,
+            cropImage.width * cropScale,
+            cropImage.height * cropScale);
+    }
+
+    if (cropZoom) {
+        cropZoom.addEventListener('input', function () {
+            if (!cropImage) return;
+            const oldScale = cropScale;
+            const baseScale = Math.max(320 / cropImage.width, 320 / cropImage.height);
+            const newScale = baseScale * Number(cropZoom.value);
+            const center = 160;
+            cropX = center - (center - cropX) * (newScale / oldScale);
+            cropY = center - (center - cropY) * (newScale / oldScale);
+            cropScale = newScale;
+            drawCrop();
+        });
+    }
+
+    if (cropCanvas) {
+        cropCanvas.addEventListener('pointerdown', function (event) {
+            if (!cropImage) return;
+            dragging = true;
+            dragOffsetX = event.clientX - cropX;
+            dragOffsetY = event.clientY - cropY;
+            cropCanvas.classList.add('dragging');
+            cropCanvas.setPointerCapture(event.pointerId);
+        });
+        cropCanvas.addEventListener('pointermove', function (event) {
+            if (!dragging) return;
+            cropX = event.clientX - dragOffsetX;
+            cropY = event.clientY - dragOffsetY;
+            drawCrop();
+        });
+        const stopDrag = function () {
+            dragging = false;
+            cropCanvas.classList.remove('dragging');
+        };
+        cropCanvas.addEventListener('pointerup', stopDrag);
+        cropCanvas.addEventListener('pointercancel', stopDrag);
+    }
+
+    if (cancelCropButton) {
+        cancelCropButton.addEventListener('click', function () {
+            if (cropModal) cropModal.classList.remove('show');
+            cropImage = null;
+            if (profilePictureInput) profilePictureInput.value = '';
+        });
+    }
+
+    if (applyCropButton) {
+        applyCropButton.addEventListener('click', async function () {
+            if (!cropImage || !cropCanvas || !authToken) return;
+
+            const output = document.createElement('canvas');
+            output.width = 500;
+            output.height = 500;
+            const ctx = output.getContext('2d');
+            ctx.drawImage(cropCanvas, 0, 0, 320, 320, 0, 0, 500, 500);
+            const croppedData = output.toDataURL('image/jpeg', 0.88);
+
+            if (cropModal) cropModal.classList.remove('show');
+            message('Uploading profile picture...');
+            applyCropButton.disabled = true;
+
+            try {
+                const response = await fetch('/profile-picture', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ profilePicture: croppedData })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Profile picture upload failed.');
+                }
+                currentProfilePicture = data.profilePicture;
+                setMyAvatars(currentProfilePicture);
+                message('Profile picture updated successfully.');
+            } catch (error) {
+                message(error.message || 'Profile picture upload failed.', true);
+            } finally {
+                applyCropButton.disabled = false;
+                cropImage = null;
+                if (profilePictureInput) profilePictureInput.value = '';
+            }
+        });
+    }
+
+    // Load saved picture
+    if (authToken) {
+        fetch('/profile-picture', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            currentProfilePicture = data.success ? data.profilePicture : null;
+            setMyAvatars(currentProfilePicture);
+        })
+        .catch(function () { setMyAvatars(null); });
+    }
+})();
+</script>
+
+
+<script>
+(function(){
+  function setupProfileUI(){
+    const profileButton=document.getElementById('profileButton');
+    const profileMenu=document.getElementById('profileMenu');
+    const editButton=document.getElementById('editProfileButton');
+    const editModal=document.getElementById('editProfileModal');
+    const cancelEdit=document.getElementById('cancelEditProfileButton');
+    if(!profileButton||!profileMenu){console.error('Profile UI elements missing');return;}
+    if(profileButton.dataset.profileBound==='1') return;
+    profileButton.dataset.profileBound='1';
+    profileButton.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();profileMenu.classList.toggle('show');});
+    profileMenu.addEventListener('click',function(e){e.stopPropagation();});
+    document.addEventListener('click',function(){profileMenu.classList.remove('show');});
+    if(editButton){
+      editButton.addEventListener('click',function(e){
+        e.preventDefault();e.stopPropagation();profileMenu.classList.remove('show');
+        if(editModal) editModal.classList.add('show');
+      });
+    }
+    if(cancelEdit){cancelEdit.addEventListener('click',function(){if(editModal) editModal.classList.remove('show');});}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setupProfileUI); else setupProfileUI();
+})();
+
+
+</script>
+</body>
+
+</html>
