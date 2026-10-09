@@ -20,7 +20,11 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
-const JWT_SECRET = "my_realtime_chat_secret_12345";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET environment variable is missing.");
+}
 
 
 // ===============================
@@ -36,15 +40,20 @@ app.use(express.static("public"));
 // ===============================
 
 const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "realtime_chat"
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: {
+        ca: process.env.DB_SSL_CA,
+        rejectUnauthorized: true
+    }
 });
 
 db.connect((err) => {
     if (err) {
-        console.error("MySQL connection failed:", err);
+        console.error("MySQL connection failed:", err.message);
     } else {
         console.log("MySQL connected successfully!");
     }
