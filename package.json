@@ -1,21 +1,22 @@
 {
-  "name": "realtime-chat",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "express": "^5.2.1",
-    "google-auth-library": "^11.1.0",
-    "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.4",
-    "socket.io": "^4.8.4"
-  }
+"name": "realtime-chat",
+"version": "1.0.0",
+"description": "Real-time chat website",
+"main": "server.js",
+"scripts": {
+"start": "node server.js"
+},
+"keywords": [],
+"author": "",
+"license": "ISC",
+"type": "commonjs",
+"dependencies": {
+"bcryptjs": "^3.0.3",
+"express": "^5.2.1",
+"google-auth-library": "^11.1.0",
+"jsonwebtoken": "^9.0.3",
+"mysql2": "^3.24.4",
+"socket.io": "^4.8.4"
 }
+}
+
