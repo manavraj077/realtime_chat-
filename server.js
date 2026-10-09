@@ -8,7 +8,7 @@ const { OAuth2Client } = require("google-auth-library");
 const { randomInt } = require("crypto");
 
 const GOOGLE_CLIENT_ID =
-    "479742394396-vu6ii0k2n5naeg2ufdougd297gks5fac.apps.googleusercontent.com";
+    "4260594162-det9iqgjp3b6ufidcvtuvnkjpl4o31ap.apps.googleusercontent.com";
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
